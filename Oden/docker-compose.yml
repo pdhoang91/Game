@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # MySQL database
+  mysql:
+    image: mysql:8.0
+    container_name: oden-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: oden
+      MYSQL_USER: oden
+      MYSQL_PASSWORD: odenpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./server/internal/db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "oden", "-podenpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # API Server
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: oden-api
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      ODEN_DB_HOST: mysql
+      ODEN_DB_PORT: 3306
+      ODEN_DB_USER: oden
+      ODEN_DB_PASSWORD: odenpassword
+      ODEN_DB_NAME: oden
+      ODEN_JWT_SECRET: your-jwt-secret-change-in-production
+      ODEN_PORT: 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./server:/app
+
+  # S3-compatible storage for assets
+  minio:
+    image: minio/minio
+    container_name: oden-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Create buckets in MinIO
+  createbuckets:
+    image: minio/mc
+    container_name: oden-createbuckets
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb myminio/oden-assets;
+      /usr/bin/mc policy set public myminio/oden-assets;
+      exit 0;
+      "
+
+volumes:
+  mysql-data:
+  minio-data: 

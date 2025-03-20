@@ -1,0 +1,29 @@
+{
+    "server": {
+        "port": 8080,
+        "host": "0.0.0.0"
+    },
+    "database": {
+        "host": "mysql",
+        "port": 3306,
+        "user": "oden",
+        "password": "odenpassword",
+        "dbname": "oden"
+    },
+    "auth": {
+        "jwt_secret": "your-jwt-secret-change-in-production",
+        "token_expiry": 24
+    },
+    "storage": {
+        "endpoint": "minio:9000",
+        "bucket": "oden-assets",
+        "access_key": "minioadmin",
+        "secret_key": "minioadmin",
+        "use_ssl": false
+    },
+    "game": {
+        "max_idle_hours": 24,
+        "idle_gold_per_minute": 2,
+        "idle_exp_per_minute": 1
+    }
+} 
